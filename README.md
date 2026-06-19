@@ -23,11 +23,9 @@ A blank page for writing. Open it, type, and everything is saved in your browser
 | `Ctrl/Cmd+N` | New page |
 | `Ctrl/Cmd+Shift+]` | Next page |
 | `Ctrl/Cmd+Shift+[` | Previous page |
-| `Ctrl/Cmd+L` | Light mode |
-| `Ctrl/Cmd+Shift+D` | Dark mode |
-| `Ctrl/Cmd+Shift+S` | System theme |
+| `Ctrl/Cmd+L` | Cycle theme (system → light → dark) |
 
-Click the dot in the bottom-left corner to cycle themes (system → light → dark).
+Click the dot in the bottom-left corner to cycle themes too.
 
 ## How it works
 

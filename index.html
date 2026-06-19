@@ -268,7 +268,7 @@
   </nav>
 
   <button id="toggle" class="chrome-btn no-print" type="button" aria-label="Toggle preview" title="Preview (Ctrl+E)">Preview</button>
-  <button id="theme-btn" class="chrome-btn no-print" type="button" aria-label="Cycle theme" title="Theme: system (click to cycle)"></button>
+  <button id="theme-btn" class="chrome-btn no-print" type="button" aria-label="Cycle theme" title="Theme (Ctrl+L)"></button>
 
   <main>
     <textarea id="editor" class="no-print-placeholder" placeholder="Start writing…" spellcheck="true"></textarea>
@@ -334,8 +334,8 @@
     function applyTheme() {
       document.documentElement.setAttribute('data-theme', state.theme);
       themeBtn.setAttribute('data-theme-val', state.theme);
-      const labels = { system: 'system (click to cycle)', light: 'light', dark: 'dark' };
-      themeBtn.title = 'Theme: ' + labels[state.theme];
+      const labels = { system: 'system', light: 'light', dark: 'dark' };
+      themeBtn.title = 'Theme: ' + labels[state.theme] + ' (Ctrl+L)';
     }
 
     function setTheme(theme) {
@@ -510,11 +510,9 @@
       const key = e.key.toLowerCase();
 
       if (key === 'e') { e.preventDefault(); setPreview(!isPreview); return; }
-      if (key === 'l') { e.preventDefault(); setTheme('light'); return; }
+      if (key === 'l') { e.preventDefault(); cycleTheme(); return; }
       if (key === 'n') { e.preventDefault(); createDoc(); return; }
 
-      if (e.shiftKey && key === 'd') { e.preventDefault(); setTheme('dark'); return; }
-      if (e.shiftKey && key === 's') { e.preventDefault(); setTheme('system'); return; }
       if (e.shiftKey && key === ']') { e.preventDefault(); nextDoc(1); return; }
       if (e.shiftKey && key === '[') { e.preventDefault(); nextDoc(-1); return; }
     });
