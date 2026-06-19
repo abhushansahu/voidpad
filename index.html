@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="system">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Voidpad — a blank page for writing. Auto-saved in your browser.">
   <title>Voidpad</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%23121212'/%3E%3Crect x='8' y='6' width='16' height='20' rx='1.5' fill='%23fafafa'/%3E%3C/svg%3E">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -13,15 +15,32 @@
       --muted: #999;
       --toggle-bg: rgba(0, 0, 0, 0.04);
       --toggle-hover: rgba(0, 0, 0, 0.08);
+      --rail-bg: rgba(0, 0, 0, 0.03);
+      --rail-border: rgba(0, 0, 0, 0.08);
+      --active-bg: rgba(0, 0, 0, 0.06);
+    }
+
+    [data-theme="dark"] {
+      --bg: #121212;
+      --fg: #e8e8e8;
+      --muted: #666;
+      --toggle-bg: rgba(255, 255, 255, 0.06);
+      --toggle-hover: rgba(255, 255, 255, 0.1);
+      --rail-bg: rgba(255, 255, 255, 0.04);
+      --rail-border: rgba(255, 255, 255, 0.08);
+      --active-bg: rgba(255, 255, 255, 0.08);
     }
 
     @media (prefers-color-scheme: dark) {
-      :root {
+      [data-theme="system"] {
         --bg: #121212;
         --fg: #e8e8e8;
         --muted: #666;
         --toggle-bg: rgba(255, 255, 255, 0.06);
         --toggle-hover: rgba(255, 255, 255, 0.1);
+        --rail-bg: rgba(255, 255, 255, 0.04);
+        --rail-border: rgba(255, 255, 255, 0.08);
+        --active-bg: rgba(255, 255, 255, 0.08);
       }
     }
 
@@ -39,11 +58,11 @@
     main {
       max-width: 42rem;
       margin: 0 auto;
-      padding: 3rem 1.5rem;
+      padding: 3rem 1.5rem 3rem 2.5rem;
       min-height: 100%;
     }
 
-    textarea, .preview {
+    textarea, .preview, .print-area {
       width: 100%;
       border: none;
       outline: none;
@@ -61,30 +80,29 @@
 
     textarea::placeholder { color: var(--muted); }
 
-    .preview { display: none; }
-    .preview h1, .preview h2, .preview h3 {
+    .preview, .print-area { display: none; }
+    .preview h1, .preview h2, .preview h3,
+    .print-area h1, .print-area h2, .print-area h3 {
       font-weight: 600;
       line-height: 1.3;
       margin: 1.2em 0 0.4em;
     }
-    .preview h1 { font-size: 1.75rem; }
-    .preview h2 { font-size: 1.4rem; }
-    .preview h3 { font-size: 1.15rem; }
-    .preview p { margin: 0.6em 0; }
-    .preview ul, .preview ol { margin: 0.6em 0; padding-left: 1.5em; }
-    .preview li { margin: 0.2em 0; }
-    .preview a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
-    .preview strong { font-weight: 600; }
-    .preview em { font-style: italic; }
-    .preview > :first-child { margin-top: 0; }
+    .preview h1, .print-area h1 { font-size: 1.75rem; }
+    .preview h2, .print-area h2 { font-size: 1.4rem; }
+    .preview h3, .print-area h3 { font-size: 1.15rem; }
+    .preview p, .print-area p { margin: 0.6em 0; }
+    .preview ul, .preview ol, .print-area ul, .print-area ol { margin: 0.6em 0; padding-left: 1.5em; }
+    .preview li, .print-area li { margin: 0.2em 0; }
+    .preview a, .print-area a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+    .preview strong, .print-area strong { font-weight: 600; }
+    .preview em, .print-area em { font-style: italic; }
+    .preview > :first-child, .print-area > :first-child { margin-top: 0; }
 
     body.preview-mode textarea { display: none; }
     body.preview-mode .preview { display: block; }
 
-    #toggle {
+    .chrome-btn {
       position: fixed;
-      top: 1rem;
-      right: 1rem;
       padding: 0.35rem 0.75rem;
       font: inherit;
       font-size: 0.8rem;
@@ -96,31 +114,314 @@
       opacity: 0.5;
       transition: opacity 150ms ease, background 150ms ease;
     }
-    #toggle:hover { opacity: 1; background: var(--toggle-hover); }
+    .chrome-btn:hover { opacity: 1; background: var(--toggle-hover); }
+
+    #toggle { top: 1rem; right: 1rem; }
+
+    #theme-btn {
+      bottom: 1rem;
+      left: 1rem;
+      width: 1.5rem;
+      height: 1.5rem;
+      padding: 0;
+      border-radius: 50%;
+      opacity: 0.4;
+    }
+    #theme-btn[data-theme-val="light"] { background: #fafafa; border: 1px solid #ccc; }
+    #theme-btn[data-theme-val="dark"] { background: #121212; border: 1px solid #444; }
+    #theme-btn[data-theme-val="system"] { background: linear-gradient(135deg, #fafafa 50%, #121212 50%); border: 1px solid #888; }
+
+    #rail {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+      z-index: 10;
+      display: flex;
+    }
+
+    #rail-tab {
+      width: 2rem;
+      background: var(--rail-bg);
+      border: none;
+      border-right: 1px solid var(--rail-border);
+      color: var(--muted);
+      font-size: 1rem;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 150ms ease;
+      flex-shrink: 0;
+    }
+    #rail-tab:hover { opacity: 1; }
+
+    #rail-panel {
+      width: 0;
+      overflow: hidden;
+      background: var(--bg);
+      border-right: 1px solid var(--rail-border);
+      transition: width 200ms ease;
+      display: flex;
+      flex-direction: column;
+    }
+    #rail.open #rail-panel { width: 11rem; }
+
+    #rail-header {
+      padding: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      border-bottom: 1px solid var(--rail-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    #new-doc {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0.15rem 0.3rem;
+      border-radius: 3px;
+    }
+    #new-doc:hover { background: var(--toggle-bg); color: var(--fg); }
+
+    #doc-list {
+      list-style: none;
+      overflow-y: auto;
+      flex: 1;
+      padding: 0.25rem 0;
+    }
+
+    #doc-list li {
+      display: flex;
+      align-items: center;
+      font-size: 0.8rem;
+      line-height: 1.4;
+    }
+
+    .doc-item {
+      flex: 1;
+      padding: 0.4rem 0.75rem;
+      background: none;
+      border: none;
+      color: var(--fg);
+      font: inherit;
+      font-size: inherit;
+      text-align: left;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      opacity: 0.7;
+    }
+    .doc-item:hover { opacity: 1; background: var(--toggle-bg); }
+    .doc-item.active { opacity: 1; background: var(--active-bg); font-weight: 500; }
+
+    .doc-del {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      padding: 0 0.5rem;
+      line-height: 1;
+    }
+    #doc-list li:hover .doc-del { display: block; }
+    .doc-del:hover { color: var(--fg); }
+
+    @page { size: A4; margin: 20mm; }
+
+    @media print {
+      .no-print { display: none !important; }
+      html, body { background: #fff !important; color: #111 !important; height: auto; }
+      main {
+        max-width: none;
+        margin: 0;
+        padding: 15mm;
+        border: 1px solid #ddd;
+        min-height: auto;
+      }
+      textarea, .preview { display: none !important; }
+      .print-area {
+        display: block !important;
+        color: #111 !important;
+        min-height: auto;
+      }
+      .print-area a { color: #111 !important; }
+    }
   </style>
 </head>
 <body>
-  <button id="toggle" type="button" aria-label="Toggle preview">Preview</button>
+  <nav id="rail" class="no-print">
+    <button id="rail-tab" type="button" aria-label="Toggle documents" title="Documents">&#8801;</button>
+    <div id="rail-panel">
+      <div id="rail-header">
+        <span>Pages</span>
+        <button id="new-doc" type="button" title="New page (Ctrl+N)">+ New</button>
+      </div>
+      <ul id="doc-list"></ul>
+    </div>
+  </nav>
+
+  <button id="toggle" class="chrome-btn no-print" type="button" aria-label="Toggle preview" title="Preview (Ctrl+E)">Preview</button>
+  <button id="theme-btn" class="chrome-btn no-print" type="button" aria-label="Cycle theme" title="Theme: system (click to cycle)"></button>
+
   <main>
-    <textarea id="editor" placeholder="Start writing…" spellcheck="true" autofocus></textarea>
+    <textarea id="editor" class="no-print-placeholder" placeholder="Start writing…" spellcheck="true"></textarea>
     <div id="preview" class="preview" aria-hidden="true"></div>
+    <div id="print-area" class="print-area" aria-hidden="true"></div>
   </main>
+
   <script>
-    const STORAGE_KEY = 'voidpad-content';
+    const STORAGE_KEY = 'voidpad-state';
+    const LEGACY_KEY = 'voidpad-content';
+
     const editor = document.getElementById('editor');
     const preview = document.getElementById('preview');
+    const printArea = document.getElementById('print-area');
     const toggle = document.getElementById('toggle');
+    const themeBtn = document.getElementById('theme-btn');
+    const rail = document.getElementById('rail');
+    const railTab = document.getElementById('rail-tab');
+    const docList = document.getElementById('doc-list');
+    const newDocBtn = document.getElementById('new-doc');
+
+    let state = { activeId: '', theme: 'system', docs: [] };
     let isPreview = false;
 
-    function save() {
-      try { localStorage.setItem(STORAGE_KEY, editor.value); } catch (_) {}
+    function uid() {
+      return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     }
 
-    function load() {
+    function activeDoc() {
+      return state.docs.find(d => d.id === state.activeId) || state.docs[0];
+    }
+
+    function deriveTitle(content) {
+      const line = content.split('\n').find(l => l.trim());
+      if (!line) return 'Untitled';
+      return line.replace(/^#+\s*/, '').trim().slice(0, 40) || 'Untitled';
+    }
+
+    function persist() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
+    }
+
+    function loadState() {
       try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved !== null) editor.value = saved;
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          state = JSON.parse(raw);
+          if (!state.docs?.length) throw new Error('empty');
+          return;
+        }
       } catch (_) {}
+
+      const legacy = localStorage.getItem(LEGACY_KEY);
+      const id = uid();
+      state = {
+        activeId: id,
+        theme: 'system',
+        docs: [{ id, title: deriveTitle(legacy || ''), content: legacy || '', updatedAt: Date.now() }]
+      };
+      persist();
+    }
+
+    function applyTheme() {
+      document.documentElement.setAttribute('data-theme', state.theme);
+      themeBtn.setAttribute('data-theme-val', state.theme);
+      const labels = { system: 'system (click to cycle)', light: 'light', dark: 'dark' };
+      themeBtn.title = 'Theme: ' + labels[state.theme];
+    }
+
+    function setTheme(theme) {
+      state.theme = theme;
+      applyTheme();
+      persist();
+    }
+
+    function cycleTheme() {
+      const order = ['system', 'light', 'dark'];
+      setTheme(order[(order.indexOf(state.theme) + 1) % order.length]);
+    }
+
+    function renderDocList() {
+      docList.innerHTML = '';
+      state.docs.forEach(doc => {
+        const li = document.createElement('li');
+        const btn = document.createElement('button');
+        btn.className = 'doc-item' + (doc.id === state.activeId ? ' active' : '');
+        btn.textContent = doc.title || 'Untitled';
+        btn.addEventListener('click', () => switchDoc(doc.id));
+        const del = document.createElement('button');
+        del.className = 'doc-del';
+        del.textContent = '\u00d7';
+        del.title = 'Delete page';
+        del.addEventListener('click', e => { e.stopPropagation(); deleteDoc(doc.id); });
+        li.appendChild(btn);
+        li.appendChild(del);
+        docList.appendChild(li);
+      });
+    }
+
+    function syncEditor() {
+      const doc = activeDoc();
+      if (doc) editor.value = doc.content;
+      resize();
+    }
+
+    function saveCurrent() {
+      const doc = activeDoc();
+      if (!doc) return;
+      doc.content = editor.value;
+      doc.title = deriveTitle(doc.content);
+      doc.updatedAt = Date.now();
+      persist();
+      renderDocList();
+    }
+
+    function switchDoc(id) {
+      if (id === state.activeId) return;
+      saveCurrent();
+      state.activeId = id;
+      persist();
+      if (isPreview) setPreview(false);
+      syncEditor();
+      renderDocList();
+      editor.focus();
+    }
+
+    function createDoc() {
+      saveCurrent();
+      const id = uid();
+      state.docs.push({ id, title: 'Untitled', content: '', updatedAt: Date.now() });
+      state.activeId = id;
+      persist();
+      if (isPreview) setPreview(false);
+      syncEditor();
+      renderDocList();
+      editor.focus();
+    }
+
+    function deleteDoc(id) {
+      if (state.docs.length <= 1) return;
+      const doc = state.docs.find(d => d.id === id);
+      if (doc?.content.trim() && !confirm('Delete "' + (doc.title || 'Untitled') + '"?')) return;
+      state.docs = state.docs.filter(d => d.id !== id);
+      if (state.activeId === id) state.activeId = state.docs[0].id;
+      persist();
+      syncEditor();
+      renderDocList();
+    }
+
+    function nextDoc(dir) {
+      const idx = state.docs.findIndex(d => d.id === state.activeId);
+      const next = (idx + dir + state.docs.length) % state.docs.length;
+      switchDoc(state.docs[next].id);
     }
 
     function escapeHtml(s) {
@@ -200,19 +501,41 @@
     }
 
     toggle.addEventListener('click', () => setPreview(!isPreview));
+    themeBtn.addEventListener('click', cycleTheme);
+    railTab.addEventListener('click', () => rail.classList.toggle('open'));
+    newDocBtn.addEventListener('click', createDoc);
 
-    document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
-        e.preventDefault();
-        setPreview(!isPreview);
-      }
+    document.addEventListener('keydown', e => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      const key = e.key.toLowerCase();
+
+      if (key === 'e') { e.preventDefault(); setPreview(!isPreview); return; }
+      if (key === 'l') { e.preventDefault(); setTheme('light'); return; }
+      if (key === 'n') { e.preventDefault(); createDoc(); return; }
+
+      if (e.shiftKey && key === 'd') { e.preventDefault(); setTheme('dark'); return; }
+      if (e.shiftKey && key === 's') { e.preventDefault(); setTheme('system'); return; }
+      if (e.shiftKey && key === ']') { e.preventDefault(); nextDoc(1); return; }
+      if (e.shiftKey && key === '[') { e.preventDefault(); nextDoc(-1); return; }
     });
 
-    editor.addEventListener('input', () => { save(); resize(); });
-    window.addEventListener('beforeunload', save);
+    editor.addEventListener('input', () => { saveCurrent(); resize(); });
+    window.addEventListener('beforeunload', saveCurrent);
 
-    load();
-    resize();
+    window.addEventListener('beforeprint', () => {
+      saveCurrent();
+      printArea.innerHTML = parseMd(editor.value);
+      printArea.setAttribute('aria-hidden', 'false');
+    });
+    window.addEventListener('afterprint', () => {
+      printArea.innerHTML = '';
+      printArea.setAttribute('aria-hidden', 'true');
+    });
+
+    loadState();
+    applyTheme();
+    syncEditor();
+    renderDocList();
     if (!editor.value) editor.focus();
   </script>
 </body>
