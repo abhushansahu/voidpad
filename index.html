@@ -329,6 +329,17 @@
       return line.replace(/^#+\s*/, '').trim().slice(0, 40) || 'Untitled';
     }
 
+    const DEFAULT_TITLE = 'Voidpad';
+
+    function printFilename(content) {
+      if (!content.trim()) return DEFAULT_TITLE;
+      const name = deriveTitle(content);
+      if (name === 'Untitled') return DEFAULT_TITLE;
+      return name.replace(/[/\\:*?"<>|]/g, '').trim() || DEFAULT_TITLE;
+    }
+
+    let savedTitle = document.title;
+
     function persist() {
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
     }
@@ -544,10 +555,13 @@
 
     window.addEventListener('beforeprint', () => {
       saveCurrent();
+      savedTitle = document.title;
+      document.title = printFilename(editor.value);
       printArea.innerHTML = parseMd(editor.value);
       printArea.setAttribute('aria-hidden', 'false');
     });
     window.addEventListener('afterprint', () => {
+      document.title = savedTitle;
       printArea.innerHTML = '';
       printArea.setAttribute('aria-hidden', 'true');
     });
