@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Voidpad</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #fafafa;
+      --fg: #1a1a1a;
+      --muted: #999;
+      --toggle-bg: rgba(0, 0, 0, 0.04);
+      --toggle-hover: rgba(0, 0, 0, 0.08);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --fg: #e8e8e8;
+        --muted: #666;
+        --toggle-bg: rgba(255, 255, 255, 0.06);
+        --toggle-hover: rgba(255, 255, 255, 0.1);
+      }
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 1.125rem;
+      line-height: 1.7;
+      letter-spacing: 0.01em;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+      min-height: 100%;
+    }
+
+    textarea, .preview {
+      width: 100%;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--fg);
+      font: inherit;
+      line-height: inherit;
+      letter-spacing: inherit;
+      resize: none;
+      overflow: hidden;
+      min-height: calc(100vh - 6rem);
+      -webkit-overflow-scrolling: touch;
+      transition: opacity 150ms ease;
+    }
+
+    textarea::placeholder { color: var(--muted); }
+
+    .preview { display: none; }
+    .preview h1, .preview h2, .preview h3 {
+      font-weight: 600;
+      line-height: 1.3;
+      margin: 1.2em 0 0.4em;
+    }
+    .preview h1 { font-size: 1.75rem; }
+    .preview h2 { font-size: 1.4rem; }
+    .preview h3 { font-size: 1.15rem; }
+    .preview p { margin: 0.6em 0; }
+    .preview ul, .preview ol { margin: 0.6em 0; padding-left: 1.5em; }
+    .preview li { margin: 0.2em 0; }
+    .preview a { color: var(--fg); text-decoration: underline; text-underline-offset: 2px; }
+    .preview strong { font-weight: 600; }
+    .preview em { font-style: italic; }
+    .preview > :first-child { margin-top: 0; }
+
+    body.preview-mode textarea { display: none; }
+    body.preview-mode .preview { display: block; }
+
+    #toggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      padding: 0.35rem 0.75rem;
+      font: inherit;
+      font-size: 0.8rem;
+      color: var(--muted);
+      background: var(--toggle-bg);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.5;
+      transition: opacity 150ms ease, background 150ms ease;
+    }
+    #toggle:hover { opacity: 1; background: var(--toggle-hover); }
+  </style>
+</head>
+<body>
+  <button id="toggle" type="button" aria-label="Toggle preview">Preview</button>
+  <main>
+    <textarea id="editor" placeholder="Start writing…" spellcheck="true" autofocus></textarea>
+    <div id="preview" class="preview" aria-hidden="true"></div>
+  </main>
+  <script>
+    const STORAGE_KEY = 'voidpad-content';
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const toggle = document.getElementById('toggle');
+    let isPreview = false;
+
+    function save() {
+      try { localStorage.setItem(STORAGE_KEY, editor.value); } catch (_) {}
+    }
+
+    function load() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved !== null) editor.value = saved;
+      } catch (_) {}
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function inline(s) {
+      s = escapeHtml(s);
+      s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
+      s = s.replace(/_(.+?)_/g, '<em>$1</em>');
+      s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" rel="noopener">$1</a>');
+      return s;
+    }
+
+    function parseMd(text) {
+      const lines = text.split('\n');
+      let html = '';
+      let inUl = false;
+      let inOl = false;
+
+      function closeLists() {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (inOl) { html += '</ol>'; inOl = false; }
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const h3 = line.match(/^### (.+)/);
+        const h2 = line.match(/^## (.+)/);
+        const h1 = line.match(/^# (.+)/);
+        const ul = line.match(/^[-*] (.+)/);
+        const ol = line.match(/^\d+\. (.+)/);
+
+        if (h3) { closeLists(); html += '<h3>' + inline(h3[1]) + '</h3>'; continue; }
+        if (h2) { closeLists(); html += '<h2>' + inline(h2[1]) + '</h2>'; continue; }
+        if (h1) { closeLists(); html += '<h1>' + inline(h1[1]) + '</h1>'; continue; }
+        if (ul) {
+          if (!inUl) { closeLists(); html += '<ul>'; inUl = true; }
+          html += '<li>' + inline(ul[1]) + '</li>';
+          continue;
+        }
+        if (ol) {
+          if (!inOl) { closeLists(); html += '<ol>'; inOl = true; }
+          html += '<li>' + inline(ol[1]) + '</li>';
+          continue;
+        }
+        closeLists();
+        if (line.trim() === '') {
+          html += '<br>';
+        } else {
+          html += '<p>' + inline(line) + '</p>';
+        }
+      }
+      closeLists();
+      return html;
+    }
+
+    function resize() {
+      editor.style.height = 'auto';
+      editor.style.height = editor.scrollHeight + 'px';
+    }
+
+    function setPreview(on) {
+      isPreview = on;
+      document.body.classList.toggle('preview-mode', on);
+      toggle.textContent = on ? 'Edit' : 'Preview';
+      toggle.setAttribute('aria-label', on ? 'Switch to edit mode' : 'Toggle preview');
+      preview.setAttribute('aria-hidden', on ? 'false' : 'true');
+      if (on) {
+        preview.innerHTML = parseMd(editor.value);
+      } else {
+        editor.focus();
+        resize();
+      }
+    }
+
+    toggle.addEventListener('click', () => setPreview(!isPreview));
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
+        e.preventDefault();
+        setPreview(!isPreview);
+      }
+    });
+
+    editor.addEventListener('input', () => { save(); resize(); });
+    window.addEventListener('beforeunload', save);
+
+    load();
+    resize();
+    if (!editor.value) editor.focus();
+  </script>
+</body>
+</html>
