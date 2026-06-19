@@ -11,7 +11,7 @@ A blank page for writing. Open it, type, and everything is saved in your browser
 - **Auto-save** — every keystroke saved to `localStorage`; close the tab and come back anytime
 - **Markdown preview** — write in markdown, toggle preview when you want to see the result
 - **Multiple pages** — work on several documents, switch between them from the side rail
-- **Print-ready** — `Ctrl/Cmd+P` prints a clean A4 page with rendered markdown
+- **Print-ready** — `Ctrl/Cmd+P` prints rendered markdown; paper size, scale, and margins stay in your browser's print dialog
 - **Private** — no server, no accounts, no tracking
 
 ## Keyboard shortcuts
